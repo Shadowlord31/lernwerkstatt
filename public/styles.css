@@ -139,14 +139,14 @@ input[type=text], input[type=number], select {
 
 .worksheet-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 260px));
+  gap: 16px;
 }
 .worksheet-card {
   text-decoration: none;
-  min-height: 110px;
-  display: flex; flex-direction: column; gap: 8px;
+  display: flex; flex-direction: column; gap: 10px;
   align-items: flex-start; text-align: left;
+  padding: 20px;
   background: #fff; color: var(--ink);
   border: 2px solid var(--line);
   box-shadow: 0 5px 14px rgba(31, 41, 55, 0.06);
@@ -160,7 +160,7 @@ input[type=text], input[type=number], select {
 .worksheet-card strong { font-size: 1.15rem; }
 
 /* --- Aufgaben (Kind-Ansicht) --- */
-.task-section { margin: 20px 0; }
+.task-section { margin: 28px 0; }
 .section-bar {
   display: inline-block;
   border-radius: 999px;
@@ -170,11 +170,11 @@ input[type=text], input[type=number], select {
   font-weight: 900;
   margin-bottom: 12px;
 }
-.task-grid { display: flex; flex-wrap: wrap; gap: 12px; }
+.task-grid { display: flex; flex-wrap: wrap; gap: 18px; }
 .child-task-card {
   min-width: 200px;
   display: flex; align-items: center; gap: 10px;
-  padding: 14px; font-size: 20px;
+  padding: 22px; font-size: 20px;
   background: #fff; border: 2px solid var(--line);
   box-shadow: 0 5px 14px rgba(31, 41, 55, 0.06);
 }
@@ -185,15 +185,15 @@ input[type=text], input[type=number], select {
 .child-task-card input.correct { border-color: var(--mint); background: #f0fff4; }
 .child-task-card input.wrong { border-color: var(--rose); background: #fff5f5; }
 
-.pyramid { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.prow { display: flex; gap: 10px; }
+.pyramid { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.prow { display: flex; gap: 16px; }
 .pcell {
-  width: 55px; height: 45px;
+  width: 62px; height: 52px;
   display: flex; align-items: center; justify-content: center;
   background: #eef2ff; border-radius: 8px; border: 2px solid #c7d3f0;
   font-weight: 800;
 }
-.pcell input { width: 45px; text-align: center; }
+.pcell input { width: 50px; text-align: center; }
 
 .dot-grid { display: flex; flex-wrap: wrap; gap: 4px; max-width: 260px; margin-bottom: 8px; }
 .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--brand); }

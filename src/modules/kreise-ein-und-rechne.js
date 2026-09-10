@@ -8,6 +8,7 @@ function generate(config = {}) {
     gruppengroesseOptions = [2, 3, 4, 5, 6, 7, 8, 9],
     gesamtMin = 12,
     gesamtMax = 48,
+    maxGruppen = 10,
   } = config;
 
   const tasks = [];
@@ -15,8 +16,9 @@ function generate(config = {}) {
     const gruppengroesse =
       gruppengroesseOptions[Math.floor(Math.random() * gruppengroesseOptions.length)];
     const minGruppen = Math.max(2, Math.ceil(gesamtMin / gruppengroesse));
-    const maxGruppen = Math.max(minGruppen, Math.floor(gesamtMax / gruppengroesse));
-    const anzahlGruppen = randInt(minGruppen, maxGruppen);
+    const maxGruppenByTotal = Math.floor(gesamtMax / gruppengroesse);
+    const effectiveMax = Math.max(minGruppen, Math.min(maxGruppenByTotal, maxGruppen));
+    const anzahlGruppen = randInt(minGruppen, effectiveMax);
     const gesamt = gruppengroesse * anzahlGruppen;
 
     tasks.push({
@@ -48,6 +50,7 @@ module.exports = {
       { key: 'anzahl', label: 'Anzahl Aufgaben', type: 'number', default: 1 },
       { key: 'gesamtMin', label: 'Gesamtzahl mindestens', type: 'number', default: 12 },
       { key: 'gesamtMax', label: 'Gesamtzahl höchstens', type: 'number', default: 48 },
+      { key: 'maxGruppen', label: 'Max. Anzahl Gruppen (Einmaleins-Grenze)', type: 'number', default: 10 },
     ],
   },
 };

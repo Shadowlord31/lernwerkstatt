@@ -181,6 +181,33 @@ app.put('/api/worksheets/:id', (req, res) => {
   }
 });
 
+// Ganzes Aufgabenblatt neu generieren (gleiche Module/Konfig, neue Zahlen)
+app.post('/api/worksheets/:id/regenerate', (req, res) => {
+  try {
+    const worksheet = db.prepare('SELECT id FROM worksheets WHERE id = ?').get(req.params.id);
+    if (!worksheet) return res.status(404).json({ error: 'Nicht gefunden' });
+
+    const mods = db.prepare('SELECT * FROM worksheet_modules WHERE worksheet_id = ?').all(req.params.id);
+    const updateTasks = db.prepare('UPDATE worksheet_modules SET tasks_json = ? WHERE id = ?');
+    const clearAttempts = db.prepare('DELETE FROM attempts WHERE worksheet_module_id = ?');
+
+    db.transaction(() => {
+      mods.forEach((m) => {
+        const modDef = modules[m.module_type];
+        if (!modDef) return;
+        const tasks = modDef.generate(JSON.parse(m.config_json));
+        updateTasks.run(JSON.stringify(tasks), m.id);
+        clearAttempts.run(m.id);
+      });
+    })();
+
+    res.json({ regenerated: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Aufgabenblatt löschen
 app.delete('/api/worksheets/:id', (req, res) => {
   try {

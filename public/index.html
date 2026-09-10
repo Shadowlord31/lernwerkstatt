@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lernwerkstatt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body class="child-page">
+  <main class="app child-app">
+    <section id="kidsView">
+      <div class="kid-picker">
+        <h1>📘 Lernwerkstatt</h1>
+        <div id="kids" class="kid-grid"></div>
+      </div>
+    </section>
+
+    <section id="worksheetsView" class="hidden">
+      <header class="child-header">
+        <button class="secondary" id="backBtn"><i class="mdi mdi-arrow-left"></i> Zurück</button>
+        <h2 id="kidName"></h2>
+      </header>
+      <div id="worksheetGrid" class="worksheet-grid"></div>
+    </section>
+  </main>
+
+  <a class="admin-link" href="/admin.html"><i class="mdi mdi-cog"></i> Admin</a>
+
+<script src="/app.js"></script>
+<script>
+let kids = [];
+let selectedKid = null;
+
+const kidsView = document.querySelector('#kidsView');
+const worksheetsView = document.querySelector('#worksheetsView');
+
+async function loadKids() {
+  kids = await api('/api/children');
+  document.querySelector('#kids').innerHTML = kids.map((kid) => `
+    <button class="kid-card" data-id="${kid.id}">
+      ${avatarHtml(kid)}
+      <strong>${kid.name}</strong>
+    </button>
+  `).join('') || '<p class="muted">Noch keine Kinder angelegt. Im Admin-Bereich anlegen.</p>';
+
+  document.querySelectorAll('.kid-card').forEach((btn) => {
+    btn.addEventListener('click', () => selectKid(Number(btn.dataset.id)));
+  });
+}
+
+async function selectKid(id) {
+  selectedKid = kids.find((k) => k.id === id);
+  kidsView.classList.add('hidden');
+  worksheetsView.classList.remove('hidden');
+  document.querySelector('#kidName').textContent = selectedKid.name;
+  await loadWorksheets();
+}
+
+async function loadWorksheets() {
+  const worksheets = await api(`/api/worksheets?child_id=${selectedKid.id}`);
+  const grid = document.querySelector('#worksheetGrid');
+  grid.innerHTML = worksheets.map((w) => `
+    <a class="worksheet-card" href="/worksheet.html?id=${w.id}">
+      <span class="badge">${w.subject}</span>
+      <strong>${w.title}</strong>
+    </a>
+  `).join('') || '<p class="muted">Noch keine Aufgabenblätter für dich. Frag im Admin-Bereich nach!</p>';
+}
+
+document.querySelector('#backBtn').addEventListener('click', () => {
+  worksheetsView.classList.add('hidden');
+  kidsView.classList.remove('hidden');
+  selectedKid = null;
+});
+
+loadKids().catch((err) => toast(err.message));
+</script>
+</body>
+</html>

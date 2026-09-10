@@ -4,94 +4,92 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lernwerkstatt – Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
 <style>
-  * { box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; color: #222; }
-  h1 { color: #2b6cb0; }
-  h2 { margin-top: 30px; }
-  .card { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-  label { display: block; margin: 8px 0 4px; font-weight: 600; font-size: 14px; }
-  input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-  button { background: #2b6cb0; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-top: 10px; }
-  button.secondary { background: #718096; }
-  button.danger { background: #c53030; }
-  .module-block { border: 1px dashed #999; border-radius: 8px; padding: 12px; margin: 10px 0; background: #fafafa; }
+  .module-block { border: 1px dashed var(--line); border-radius: 8px; padding: 12px; margin: 10px 0; background: #fafbfd; }
   .row { display: flex; gap: 10px; align-items: center; }
-  ul { list-style: none; padding: 0; }
-  li { padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-  a.link { color: #2b6cb0; text-decoration: none; }
+  ul.plain { list-style: none; padding: 0; margin: 0; }
+  ul.plain li { padding: 8px 0; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+  a.link { color: var(--brand); text-decoration: none; font-weight: 700; }
 </style>
 </head>
 <body>
-  <h1>🛠️ Lernwerkstatt – Admin</h1>
+  <main class="app">
+    <h1><i class="mdi mdi-cog"></i> Lernwerkstatt – Admin</h1>
 
-  <div class="card">
-    <h2>Kinder</h2>
-    <ul id="childrenList"></ul>
-    <div class="row">
-      <input id="newChildName" placeholder="Name des Kindes">
-      <button onclick="addChild()">Hinzufügen</button>
+    <div class="card">
+      <h2>Kinder</h2>
+      <ul id="childrenList" class="plain"></ul>
+      <div class="row" style="margin-top:10px">
+        <input id="newChildName" type="text" placeholder="Name des Kindes">
+        <button onclick="addChild()">Hinzufügen</button>
+      </div>
     </div>
-  </div>
 
-  <div class="card">
-    <h2>Neues Aufgabenblatt</h2>
-    <label>Titel</label>
-    <input id="wsTitle" placeholder="z.B. 9er-Reihe Übung">
+    <div class="card">
+      <h2>Neues Aufgabenblatt</h2>
+      <label>Titel</label>
+      <input id="wsTitle" type="text" placeholder="z.B. 9er-Reihe Übung">
 
-    <label>Kind</label>
-    <select id="wsChild"></select>
+      <label>Kind</label>
+      <select id="wsChild"></select>
 
-    <label>Fach</label>
-    <select id="wsSubject">
-      <option value="mathe">Mathe</option>
-      <option value="deutsch" disabled>Deutsch (bald verfügbar)</option>
-    </select>
+      <label>Fach</label>
+      <select id="wsSubject">
+        <option value="mathe">Mathe</option>
+        <option value="deutsch" disabled>Deutsch (bald verfügbar)</option>
+      </select>
 
-    <h3>Module</h3>
-    <div id="moduleList"></div>
-    <select id="addModuleType"></select>
-    <button class="secondary" onclick="addModule()">+ Modul hinzufügen</button>
+      <h3>Module</h3>
+      <div id="moduleList"></div>
+      <div class="row">
+        <select id="addModuleType"></select>
+        <button class="secondary" onclick="addModule()">+ Modul hinzufügen</button>
+      </div>
 
-    <div>
-      <button onclick="saveWorksheet()">Aufgabenblatt speichern</button>
+      <div style="margin-top:12px">
+        <button onclick="saveWorksheet()"><i class="mdi mdi-content-save"></i> Aufgabenblatt speichern</button>
+      </div>
     </div>
-  </div>
 
-  <div class="card">
-    <h2>Bestehende Aufgabenblätter</h2>
-    <ul id="worksheetList"></ul>
-  </div>
+    <div class="card">
+      <h2>Bestehende Aufgabenblätter</h2>
+      <ul id="worksheetList" class="plain"></ul>
+    </div>
+  </main>
 
+<script src="/app.js"></script>
 <script>
 let moduleTypes = [];
 let moduleInstances = [];
 
 async function loadChildren() {
-  const res = await fetch('/api/children');
-  const children = await res.json();
+  const children = await api('/api/children');
   const list = document.getElementById('childrenList');
-  list.innerHTML = children.map(c => `<li>${c.name}</li>`).join('') || '<li>Noch keine Kinder angelegt</li>';
+  list.innerHTML = children.map(c => `<li><span>${avatarHtmlSmall(c)} ${c.name}</span></li>`).join('') || '<li>Noch keine Kinder angelegt</li>';
   const select = document.getElementById('wsChild');
   select.innerHTML = '<option value="">– kein Kind zugeordnet –</option>' +
     children.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 }
 
+function avatarHtmlSmall(c) {
+  return `<i class="mdi mdi-account-circle" style="color:var(--brand)"></i>`;
+}
+
 async function addChild() {
   const name = document.getElementById('newChildName').value.trim();
   if (!name) return;
-  await fetch('/api/children', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name })
-  });
+  await api('/api/children', { method: 'POST', body: JSON.stringify({ name }) });
   document.getElementById('newChildName').value = '';
   loadChildren();
 }
 
 async function loadModuleTypes() {
-  const res = await fetch('/api/module-types');
-  moduleTypes = await res.json();
+  moduleTypes = await api('/api/module-types');
   const select = document.getElementById('addModuleType');
   select.innerHTML = moduleTypes.map(m => `<option value="${m.key}">${m.label}</option>`).join('');
 }
@@ -140,33 +138,29 @@ async function saveWorksheet() {
   const child_id = document.getElementById('wsChild').value || null;
   const subject = document.getElementById('wsSubject').value;
 
-  if (!title) { alert('Bitte einen Titel eingeben'); return; }
-  if (moduleInstances.length === 0) { alert('Bitte mindestens ein Modul hinzufügen'); return; }
+  if (!title) { toast('Bitte einen Titel eingeben'); return; }
+  if (moduleInstances.length === 0) { toast('Bitte mindestens ein Modul hinzufügen'); return; }
 
-  const res = await fetch('/api/worksheets', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      title, subject, child_id,
-      modules: moduleInstances.map(m => ({ type: m.type, config: m.config }))
-    })
-  });
-
-  if (res.ok) {
+  try {
+    await api('/api/worksheets', {
+      method: 'POST',
+      body: JSON.stringify({
+        title, subject, child_id,
+        modules: moduleInstances.map(m => ({ type: m.type, config: m.config })),
+      }),
+    });
     document.getElementById('wsTitle').value = '';
     moduleInstances = [];
     renderModules();
     loadWorksheets();
-    alert('Aufgabenblatt gespeichert!');
-  } else {
-    const err = await res.json();
-    alert('Fehler: ' + err.error);
+    toast('Aufgabenblatt gespeichert!');
+  } catch (err) {
+    toast('Fehler: ' + err.message);
   }
 }
 
 async function loadWorksheets() {
-  const res = await fetch('/api/worksheets');
-  const worksheets = await res.json();
+  const worksheets = await api('/api/worksheets');
   const list = document.getElementById('worksheetList');
   list.innerHTML = worksheets.map(w => `
     <li>

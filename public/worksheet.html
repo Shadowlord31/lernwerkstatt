@@ -4,42 +4,46 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lernwerkstatt</title>
-<style>
-  * { box-sizing: border-box; }
-  body { font-family: 'Comic Sans MS', 'Baloo 2', 'Segoe UI', sans-serif; background: #fff8e7; margin: 0; padding: 20px; color: #333; }
-  h1 { color: #d97706; }
-  h2 { color: #2b6cb0; margin-top: 30px; }
-  .task { background: #fff; border-radius: 10px; padding: 14px; margin: 10px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  input[type=number] { width: 70px; padding: 6px; font-size: 18px; border: 2px solid #ccc; border-radius: 6px; text-align: center; }
-  input.correct { border-color: #38a169; background: #f0fff4; }
-  input.wrong { border-color: #e53e3e; background: #fff5f5; }
-  button { background: #d97706; color: #fff; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 16px; margin-top: 10px; }
-  .pyramid { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-  .prow { display: flex; gap: 10px; }
-  .pcell { width: 55px; height: 45px; display: flex; align-items: center; justify-content: center; background: #ebf4ff; border-radius: 8px; border: 2px solid #90cdf4; }
-  .dot-grid { display: flex; flex-wrap: wrap; gap: 4px; max-width: 260px; margin-bottom: 8px; }
-  .dot { width: 14px; height: 14px; border-radius: 50%; background: #2b6cb0; }
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
 </head>
-<body>
-  <h1 id="title">Lade...</h1>
-  <div id="content"></div>
+<body class="child-page">
+  <main class="app child-app">
+    <header class="child-header">
+      <button class="secondary" onclick="history.back()"><i class="mdi mdi-arrow-left"></i> Zurück</button>
+      <h2 id="title">Lade...</h2>
+    </header>
+    <div id="content"></div>
+  </main>
 
+<script src="/app.js"></script>
 <script>
 const params = new URLSearchParams(location.search);
 const id = params.get('id');
 
+const moduleMeta = {
+  'reihen-drill': { title: 'Reihen-Drill', icon: 'numeric', color: 'section-blue' },
+  'zahlenmauer': { title: 'Zahlenmauer', icon: 'triangle-outline', color: 'section-green' },
+  'kreise-ein-und-rechne': { title: 'Kreise ein und rechne', icon: 'circle-multiple-outline', color: 'section-yellow' },
+};
+
 async function load() {
-  const res = await fetch('/api/worksheets/' + id);
-  const ws = await res.json();
-  document.getElementById('title').textContent = ws.title;
-  const container = document.getElementById('content');
+  const ws = await api('/api/worksheets/' + id);
+  document.querySelector('#title').textContent = ws.title;
+  const container = document.querySelector('#content');
   container.innerHTML = '';
 
   ws.modules.forEach((mod) => {
+    const meta = moduleMeta[mod.type] || { title: mod.type };
     const section = document.createElement('div');
-    section.innerHTML = `<h2>${moduleTitle(mod.type)}</h2>`;
+    section.className = 'task-section';
+    section.innerHTML = `<div class="section-bar"><i class="mdi mdi-${meta.icon || 'star'}"></i> ${meta.title}</div>`;
+
     const taskWrap = document.createElement('div');
+    taskWrap.className = 'task-grid';
     taskWrap.id = 'mod-' + mod.id;
 
     if (mod.type === 'reihen-drill') renderReihenDrill(taskWrap, mod);
@@ -49,7 +53,8 @@ async function load() {
     section.appendChild(taskWrap);
 
     const btn = document.createElement('button');
-    btn.textContent = 'Prüfen';
+    btn.style.marginTop = '10px';
+    btn.innerHTML = '<i class="mdi mdi-check-bold"></i> Prüfen';
     btn.onclick = () => checkModule(mod);
     section.appendChild(btn);
 
@@ -57,14 +62,10 @@ async function load() {
   });
 }
 
-function moduleTitle(type) {
-  return { 'reihen-drill': 'Reihen-Drill', 'zahlenmauer': 'Zahlenmauer', 'kreise-ein-und-rechne': 'Kreise ein und rechne' }[type] || type;
-}
-
 function renderReihenDrill(container, mod) {
   mod.tasks.forEach((t, i) => {
     const div = document.createElement('div');
-    div.className = 'task';
+    div.className = 'child-task-card';
     div.innerHTML = `<span>${t.display} = </span><input type="number" data-idx="${i}">`;
     container.appendChild(div);
   });
@@ -73,7 +74,7 @@ function renderReihenDrill(container, mod) {
 function renderZahlenmauer(container, mod) {
   mod.tasks.forEach((t, i) => {
     const wrap = document.createElement('div');
-    wrap.className = 'task';
+    wrap.className = 'child-task-card';
     const pyramid = document.createElement('div');
     pyramid.className = 'pyramid';
     [2, 1, 0].forEach((level) => {
@@ -85,7 +86,7 @@ function renderZahlenmauer(container, mod) {
         if (c.given) {
           cell.textContent = c.value;
         } else {
-          cell.innerHTML = `<input type="number" data-idx="${i}" data-level="${level}" data-pos="${pos}" style="width:45px">`;
+          cell.innerHTML = `<input type="number" data-idx="${i}" data-level="${level}" data-pos="${pos}">`;
         }
         row.appendChild(cell);
       });
@@ -99,7 +100,7 @@ function renderZahlenmauer(container, mod) {
 function renderKreise(container, mod) {
   mod.tasks.forEach((t, i) => {
     const wrap = document.createElement('div');
-    wrap.className = 'task';
+    wrap.className = 'child-task-card';
     wrap.style.flexDirection = 'column';
     wrap.style.alignItems = 'flex-start';
 
@@ -113,7 +114,7 @@ function renderKreise(container, mod) {
     wrap.appendChild(dotGrid);
     wrap.innerHTML += `
       <div>${t.gesamt} : ${t.gruppengroesse} = <input type="number" data-idx="${i}" data-field="hauptantwort"></div>
-      <div><input type="number" data-idx="${i}" data-field="umkehrantwort"> · ${t.gruppengroesse} = ${t.gesamt} <span style="font-size:14px;color:#888">(Umkehraufgabe)</span></div>
+      <div><input type="number" data-idx="${i}" data-field="umkehrantwort"> · ${t.gruppengroesse} = ${t.gesamt} <span class="muted" style="font-size:14px">(Umkehraufgabe)</span></div>
     `;
     container.appendChild(wrap);
   });
@@ -137,28 +138,20 @@ async function checkModule(mod) {
     }));
   }
 
-  const res = await fetch(`/api/worksheet-modules/${mod.id}/check`, {
+  const { results } = await api(`/api/worksheet-modules/${mod.id}/check`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ answers })
+    body: JSON.stringify({ answers }),
   });
-  const { results } = await res.json();
 
   results.forEach((r) => {
-    let inputs;
-    if (mod.type === 'kreise-ein-und-rechne') {
-      inputs = container.querySelectorAll(`input[data-idx="${r.index}"]`);
-    } else {
-      inputs = container.querySelectorAll(`input[data-idx="${r.index}"]`);
-    }
-    inputs.forEach(inp => {
+    container.querySelectorAll(`input[data-idx="${r.index}"]`).forEach((inp) => {
       inp.classList.remove('correct', 'wrong');
       inp.classList.add(r.correct ? 'correct' : 'wrong');
     });
   });
 }
 
-load();
+load().catch((err) => toast(err.message));
 </script>
 </body>
 </html>

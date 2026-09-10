@@ -39,13 +39,23 @@ app.get('/api/module-types', (req, res) => {
 // ---- Aufgabenblätter ----
 app.get('/api/worksheets', (req, res) => {
   try {
-    const rows = db
-      .prepare(
-        `SELECT w.*, c.name as child_name FROM worksheets w
-         LEFT JOIN children c ON c.id = w.child_id
-         ORDER BY w.created_at DESC`
-      )
-      .all();
+    const { child_id } = req.query;
+    const rows = child_id
+      ? db
+          .prepare(
+            `SELECT w.*, c.name as child_name FROM worksheets w
+             LEFT JOIN children c ON c.id = w.child_id
+             WHERE w.child_id = ?
+             ORDER BY w.created_at DESC`
+          )
+          .all(child_id)
+      : db
+          .prepare(
+            `SELECT w.*, c.name as child_name FROM worksheets w
+             LEFT JOIN children c ON c.id = w.child_id
+             ORDER BY w.created_at DESC`
+          )
+          .all();
     res.json(rows);
   } catch (err) {
     console.error(err);

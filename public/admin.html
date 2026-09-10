@@ -31,7 +31,7 @@
     </div>
 
     <div class="card">
-      <h2>Neues Aufgabenblatt</h2>
+      <h2 id="formTitle">Neues Aufgabenblatt</h2>
       <label>Titel</label>
       <input id="wsTitle" type="text" placeholder="z.B. 9er-Reihe Übung">
 
@@ -51,8 +51,9 @@
         <button class="secondary" onclick="addModule()">+ Modul hinzufügen</button>
       </div>
 
-      <div style="margin-top:12px">
-        <button onclick="saveWorksheet()"><i class="mdi mdi-content-save"></i> Aufgabenblatt speichern</button>
+      <div class="row" style="margin-top:12px">
+        <button id="saveBtn" onclick="saveWorksheet()"><i class="mdi mdi-content-save"></i> Aufgabenblatt speichern</button>
+        <button id="cancelEditBtn" class="secondary hidden" onclick="cancelEdit()">Abbrechen</button>
       </div>
     </div>
 
@@ -66,6 +67,7 @@
 <script>
 let moduleTypes = [];
 let moduleInstances = [];
+let editingId = null;
 
 async function loadChildren() {
   const children = await api('/api/children');
@@ -141,19 +143,62 @@ async function saveWorksheet() {
   if (!title) { toast('Bitte einen Titel eingeben'); return; }
   if (moduleInstances.length === 0) { toast('Bitte mindestens ein Modul hinzufügen'); return; }
 
+  const payload = {
+    title, subject, child_id,
+    modules: moduleInstances.map(m => ({ type: m.type, config: m.config })),
+  };
+
   try {
-    await api('/api/worksheets', {
-      method: 'POST',
-      body: JSON.stringify({
-        title, subject, child_id,
-        modules: moduleInstances.map(m => ({ type: m.type, config: m.config })),
-      }),
-    });
-    document.getElementById('wsTitle').value = '';
-    moduleInstances = [];
-    renderModules();
+    if (editingId) {
+      await api(`/api/worksheets/${editingId}`, { method: 'PUT', body: JSON.stringify(payload) });
+      toast('Aufgabenblatt aktualisiert (neue Zahlen generiert)!');
+    } else {
+      await api('/api/worksheets', { method: 'POST', body: JSON.stringify(payload) });
+      toast('Aufgabenblatt gespeichert!');
+    }
+    cancelEdit();
     loadWorksheets();
-    toast('Aufgabenblatt gespeichert!');
+  } catch (err) {
+    toast('Fehler: ' + err.message);
+  }
+}
+
+async function editWorksheet(id) {
+  const ws = await api(`/api/worksheets/${id}/edit`);
+  editingId = id;
+  document.getElementById('formTitle').textContent = 'Aufgabenblatt bearbeiten: ' + ws.title;
+  document.getElementById('wsTitle').value = ws.title;
+  document.getElementById('wsChild').value = ws.child_id || '';
+  document.getElementById('wsSubject').value = ws.subject;
+  moduleInstances = ws.modules.map(m => ({
+    type: m.type,
+    config: { ...m.config },
+    modType: moduleTypes.find(mt => mt.key === m.type),
+  }));
+  renderModules();
+  document.getElementById('saveBtn').innerHTML = '<i class="mdi mdi-content-save"></i> Änderungen speichern';
+  document.getElementById('cancelEditBtn').classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelEdit() {
+  editingId = null;
+  document.getElementById('formTitle').textContent = 'Neues Aufgabenblatt';
+  document.getElementById('wsTitle').value = '';
+  document.getElementById('wsChild').value = '';
+  moduleInstances = [];
+  renderModules();
+  document.getElementById('saveBtn').innerHTML = '<i class="mdi mdi-content-save"></i> Aufgabenblatt speichern';
+  document.getElementById('cancelEditBtn').classList.add('hidden');
+}
+
+async function deleteWorksheet(id, title) {
+  if (!confirm(`"${title}" wirklich löschen? Das kann nicht rückgängig gemacht werden.`)) return;
+  try {
+    await api(`/api/worksheets/${id}`, { method: 'DELETE' });
+    if (editingId === id) cancelEdit();
+    loadWorksheets();
+    toast('Gelöscht.');
   } catch (err) {
     toast('Fehler: ' + err.message);
   }
@@ -167,7 +212,9 @@ async function loadWorksheets() {
       <span>${w.title} ${w.child_name ? '(' + w.child_name + ')' : ''}</span>
       <span>
         <a class="link" href="/worksheet.html?id=${w.id}" target="_blank">Öffnen</a> ·
-        <a class="link" href="/api/worksheets/${w.id}/pdf" target="_blank">PDF</a>
+        <a class="link" href="/api/worksheets/${w.id}/pdf" target="_blank">PDF</a> ·
+        <a class="link" href="#" onclick="editWorksheet(${w.id}); return false;">Bearbeiten</a> ·
+        <a class="link" href="#" onclick="deleteWorksheet(${w.id}, '${w.title.replace(/'/g, "\\'")}'); return false;" style="color:var(--rose)">Löschen</a>
       </span>
     </li>
   `).join('') || '<li>Noch keine Aufgabenblätter</li>';

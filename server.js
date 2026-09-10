@@ -120,6 +120,79 @@ app.get('/api/worksheets/:id', (req, res) => {
   }
 });
 
+// Für den Admin-Bereich: Aufgabenblatt inkl. Modul-Konfig (zum Bearbeiten) laden
+app.get('/api/worksheets/:id/edit', (req, res) => {
+  try {
+    const worksheet = db.prepare('SELECT * FROM worksheets WHERE id = ?').get(req.params.id);
+    if (!worksheet) return res.status(404).json({ error: 'Nicht gefunden' });
+
+    const mods = db
+      .prepare('SELECT * FROM worksheet_modules WHERE worksheet_id = ? ORDER BY order_index')
+      .all(req.params.id);
+
+    worksheet.modules = mods.map((m) => ({
+      type: m.module_type,
+      config: JSON.parse(m.config_json),
+    }));
+
+    res.json(worksheet);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Aufgabenblatt bearbeiten: Module werden komplett neu generiert (neue Zahlen)
+app.put('/api/worksheets/:id', (req, res) => {
+  try {
+    const { title, subject = 'mathe', child_id, modules: moduleConfigs } = req.body;
+    if (!title || !title.trim()) return res.status(400).json({ error: 'Titel fehlt' });
+    if (!Array.isArray(moduleConfigs) || moduleConfigs.length === 0) {
+      return res.status(400).json({ error: 'Mindestens ein Modul erforderlich' });
+    }
+
+    const existing = db.prepare('SELECT id FROM worksheets WHERE id = ?').get(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Nicht gefunden' });
+
+    const insertModule = db.prepare(
+      'INSERT INTO worksheet_modules (worksheet_id, module_type, order_index, config_json, tasks_json) VALUES (?, ?, ?, ?, ?)'
+    );
+
+    db.transaction(() => {
+      db.prepare('UPDATE worksheets SET title = ?, subject = ?, child_id = ? WHERE id = ?').run(
+        title.trim(),
+        subject,
+        child_id || null,
+        req.params.id
+      );
+      db.prepare('DELETE FROM worksheet_modules WHERE worksheet_id = ?').run(req.params.id);
+      moduleConfigs.forEach((m, idx) => {
+        const modDef = modules[m.type];
+        if (!modDef) throw new Error(`Unbekannter Modul-Typ: ${m.type}`);
+        const tasks = modDef.generate(m.config || {});
+        insertModule.run(req.params.id, m.type, idx, JSON.stringify(m.config || {}), JSON.stringify(tasks));
+      });
+    })();
+
+    res.json({ id: Number(req.params.id) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Aufgabenblatt löschen
+app.delete('/api/worksheets/:id', (req, res) => {
+  try {
+    const info = db.prepare('DELETE FROM worksheets WHERE id = ?').run(req.params.id);
+    if (info.changes === 0) return res.status(404).json({ error: 'Nicht gefunden' });
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 function stripAnswers(type, tasks) {
   return tasks.map((t) => {
     const clone = { ...t };

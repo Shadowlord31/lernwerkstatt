@@ -104,14 +104,19 @@ function renderKreise(container, mod) {
     wrap.style.flexDirection = 'column';
     wrap.style.alignItems = 'flex-start';
 
-    const dotGrid = document.createElement('div');
-    dotGrid.className = 'dot-grid';
-    for (let d = 0; d < t.gesamt; d++) {
-      const dot = document.createElement('div');
-      dot.className = 'dot';
-      dotGrid.appendChild(dot);
+    const dotGroups = document.createElement('div');
+    dotGroups.className = 'dot-groups';
+    for (let g = 0; g < t.anzahlGruppen; g++) {
+      const group = document.createElement('div');
+      group.className = 'dot-group';
+      for (let d = 0; d < t.gruppengroesse; d++) {
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        group.appendChild(dot);
+      }
+      dotGroups.appendChild(group);
     }
-    wrap.appendChild(dotGrid);
+    wrap.appendChild(dotGroups);
     wrap.innerHTML += `
       <div>${t.gesamt} : ${t.gruppengroesse} = <input type="number" data-idx="${i}" data-field="hauptantwort"></div>
       <div><input type="number" data-idx="${i}" data-field="umkehrantwort"> · ${t.gruppengroesse} = ${t.gesamt} <span class="muted" style="font-size:14px">(Umkehraufgabe)</span></div>

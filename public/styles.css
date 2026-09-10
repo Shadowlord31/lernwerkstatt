@@ -195,7 +195,14 @@ input[type=text], input[type=number], select {
 }
 .pcell input { width: 50px; text-align: center; }
 
-.dot-grid { display: flex; flex-wrap: wrap; gap: 4px; max-width: 260px; margin-bottom: 8px; }
+.dot-groups { display: flex; flex-wrap: wrap; gap: 14px; max-width: 100%; margin-bottom: 8px; }
+.dot-group {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  padding: 8px; max-width: 130px;
+  border: 2px dashed var(--brand);
+  border-radius: 10px;
+  background: #eef2ff;
+}
 .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--brand); }
 
 .toast {

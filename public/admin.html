@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lernwerkstatt – Admin</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; color: #222; }
+  h1 { color: #2b6cb0; }
+  h2 { margin-top: 30px; }
+  .card { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  label { display: block; margin: 8px 0 4px; font-weight: 600; font-size: 14px; }
+  input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+  button { background: #2b6cb0; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-top: 10px; }
+  button.secondary { background: #718096; }
+  button.danger { background: #c53030; }
+  .module-block { border: 1px dashed #999; border-radius: 8px; padding: 12px; margin: 10px 0; background: #fafafa; }
+  .row { display: flex; gap: 10px; align-items: center; }
+  ul { list-style: none; padding: 0; }
+  li { padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+  a.link { color: #2b6cb0; text-decoration: none; }
+</style>
+</head>
+<body>
+  <h1>🛠️ Lernwerkstatt – Admin</h1>
+
+  <div class="card">
+    <h2>Kinder</h2>
+    <ul id="childrenList"></ul>
+    <div class="row">
+      <input id="newChildName" placeholder="Name des Kindes">
+      <button onclick="addChild()">Hinzufügen</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Neues Aufgabenblatt</h2>
+    <label>Titel</label>
+    <input id="wsTitle" placeholder="z.B. 9er-Reihe Übung">
+
+    <label>Kind</label>
+    <select id="wsChild"></select>
+
+    <label>Fach</label>
+    <select id="wsSubject">
+      <option value="mathe">Mathe</option>
+      <option value="deutsch" disabled>Deutsch (bald verfügbar)</option>
+    </select>
+
+    <h3>Module</h3>
+    <div id="moduleList"></div>
+    <select id="addModuleType"></select>
+    <button class="secondary" onclick="addModule()">+ Modul hinzufügen</button>
+
+    <div>
+      <button onclick="saveWorksheet()">Aufgabenblatt speichern</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Bestehende Aufgabenblätter</h2>
+    <ul id="worksheetList"></ul>
+  </div>
+
+<script>
+let moduleTypes = [];
+let moduleInstances = [];
+
+async function loadChildren() {
+  const res = await fetch('/api/children');
+  const children = await res.json();
+  const list = document.getElementById('childrenList');
+  list.innerHTML = children.map(c => `<li>${c.name}</li>`).join('') || '<li>Noch keine Kinder angelegt</li>';
+  const select = document.getElementById('wsChild');
+  select.innerHTML = '<option value="">– kein Kind zugeordnet –</option>' +
+    children.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+async function addChild() {
+  const name = document.getElementById('newChildName').value.trim();
+  if (!name) return;
+  await fetch('/api/children', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  });
+  document.getElementById('newChildName').value = '';
+  loadChildren();
+}
+
+async function loadModuleTypes() {
+  const res = await fetch('/api/module-types');
+  moduleTypes = await res.json();
+  const select = document.getElementById('addModuleType');
+  select.innerHTML = moduleTypes.map(m => `<option value="${m.key}">${m.label}</option>`).join('');
+}
+
+function addModule() {
+  const type = document.getElementById('addModuleType').value;
+  const modType = moduleTypes.find(m => m.key === type);
+  const config = {};
+  modType.configFields.forEach(f => { config[f.key] = f.default; });
+  moduleInstances.push({ type, config, modType });
+  renderModules();
+}
+
+function removeModule(idx) {
+  moduleInstances.splice(idx, 1);
+  renderModules();
+}
+
+function renderModules() {
+  const container = document.getElementById('moduleList');
+  container.innerHTML = moduleInstances.map((inst, idx) => `
+    <div class="module-block">
+      <div class="row">
+        <strong>${inst.modType.label}</strong>
+        <button class="danger" onclick="removeModule(${idx})">Entfernen</button>
+      </div>
+      ${inst.modType.configFields.map(f => `
+        <label>${f.label}</label>
+        ${f.type === 'select'
+          ? `<select onchange="updateConfig(${idx}, '${f.key}', this.value)">
+              ${f.options.map(o => `<option value="${o}" ${inst.config[f.key] === o ? 'selected' : ''}>${o}</option>`).join('')}
+            </select>`
+          : `<input type="number" value="${inst.config[f.key]}" onchange="updateConfig(${idx}, '${f.key}', this.value)">`
+        }
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function updateConfig(idx, key, value) {
+  moduleInstances[idx].config[key] = isNaN(value) || value === '' ? value : Number(value);
+}
+
+async function saveWorksheet() {
+  const title = document.getElementById('wsTitle').value.trim();
+  const child_id = document.getElementById('wsChild').value || null;
+  const subject = document.getElementById('wsSubject').value;
+
+  if (!title) { alert('Bitte einen Titel eingeben'); return; }
+  if (moduleInstances.length === 0) { alert('Bitte mindestens ein Modul hinzufügen'); return; }
+
+  const res = await fetch('/api/worksheets', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title, subject, child_id,
+      modules: moduleInstances.map(m => ({ type: m.type, config: m.config }))
+    })
+  });
+
+  if (res.ok) {
+    document.getElementById('wsTitle').value = '';
+    moduleInstances = [];
+    renderModules();
+    loadWorksheets();
+    alert('Aufgabenblatt gespeichert!');
+  } else {
+    const err = await res.json();
+    alert('Fehler: ' + err.error);
+  }
+}
+
+async function loadWorksheets() {
+  const res = await fetch('/api/worksheets');
+  const worksheets = await res.json();
+  const list = document.getElementById('worksheetList');
+  list.innerHTML = worksheets.map(w => `
+    <li>
+      <span>${w.title} ${w.child_name ? '(' + w.child_name + ')' : ''}</span>
+      <span>
+        <a class="link" href="/worksheet.html?id=${w.id}" target="_blank">Öffnen</a> ·
+        <a class="link" href="/api/worksheets/${w.id}/pdf" target="_blank">PDF</a>
+      </span>
+    </li>
+  `).join('') || '<li>Noch keine Aufgabenblätter</li>';
+}
+
+loadChildren();
+loadModuleTypes();
+loadWorksheets();
+</script>
+</body>
+</html>

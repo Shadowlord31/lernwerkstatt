@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lernwerkstatt</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Comic Sans MS', 'Baloo 2', 'Segoe UI', sans-serif; background: #fff8e7; margin: 0; padding: 20px; color: #333; }
+  h1 { color: #d97706; }
+  h2 { color: #2b6cb0; margin-top: 30px; }
+  .task { background: #fff; border-radius: 10px; padding: 14px; margin: 10px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  input[type=number] { width: 70px; padding: 6px; font-size: 18px; border: 2px solid #ccc; border-radius: 6px; text-align: center; }
+  input.correct { border-color: #38a169; background: #f0fff4; }
+  input.wrong { border-color: #e53e3e; background: #fff5f5; }
+  button { background: #d97706; color: #fff; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 16px; margin-top: 10px; }
+  .pyramid { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .prow { display: flex; gap: 10px; }
+  .pcell { width: 55px; height: 45px; display: flex; align-items: center; justify-content: center; background: #ebf4ff; border-radius: 8px; border: 2px solid #90cdf4; }
+  .dot-grid { display: flex; flex-wrap: wrap; gap: 4px; max-width: 260px; margin-bottom: 8px; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; background: #2b6cb0; }
+</style>
+</head>
+<body>
+  <h1 id="title">Lade...</h1>
+  <div id="content"></div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const id = params.get('id');
+
+async function load() {
+  const res = await fetch('/api/worksheets/' + id);
+  const ws = await res.json();
+  document.getElementById('title').textContent = ws.title;
+  const container = document.getElementById('content');
+  container.innerHTML = '';
+
+  ws.modules.forEach((mod) => {
+    const section = document.createElement('div');
+    section.innerHTML = `<h2>${moduleTitle(mod.type)}</h2>`;
+    const taskWrap = document.createElement('div');
+    taskWrap.id = 'mod-' + mod.id;
+
+    if (mod.type === 'reihen-drill') renderReihenDrill(taskWrap, mod);
+    else if (mod.type === 'zahlenmauer') renderZahlenmauer(taskWrap, mod);
+    else if (mod.type === 'kreise-ein-und-rechne') renderKreise(taskWrap, mod);
+
+    section.appendChild(taskWrap);
+
+    const btn = document.createElement('button');
+    btn.textContent = 'Prüfen';
+    btn.onclick = () => checkModule(mod);
+    section.appendChild(btn);
+
+    container.appendChild(section);
+  });
+}
+
+function moduleTitle(type) {
+  return { 'reihen-drill': 'Reihen-Drill', 'zahlenmauer': 'Zahlenmauer', 'kreise-ein-und-rechne': 'Kreise ein und rechne' }[type] || type;
+}
+
+function renderReihenDrill(container, mod) {
+  mod.tasks.forEach((t, i) => {
+    const div = document.createElement('div');
+    div.className = 'task';
+    div.innerHTML = `<span>${t.display} = </span><input type="number" data-idx="${i}">`;
+    container.appendChild(div);
+  });
+}
+
+function renderZahlenmauer(container, mod) {
+  mod.tasks.forEach((t, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'task';
+    const pyramid = document.createElement('div');
+    pyramid.className = 'pyramid';
+    [2, 1, 0].forEach((level) => {
+      const row = document.createElement('div');
+      row.className = 'prow';
+      t.cells.filter(c => c.level === level).forEach((c, pos) => {
+        const cell = document.createElement('div');
+        cell.className = 'pcell';
+        if (c.given) {
+          cell.textContent = c.value;
+        } else {
+          cell.innerHTML = `<input type="number" data-idx="${i}" data-level="${level}" data-pos="${pos}" style="width:45px">`;
+        }
+        row.appendChild(cell);
+      });
+      pyramid.appendChild(row);
+    });
+    wrap.appendChild(pyramid);
+    container.appendChild(wrap);
+  });
+}
+
+function renderKreise(container, mod) {
+  mod.tasks.forEach((t, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'task';
+    wrap.style.flexDirection = 'column';
+    wrap.style.alignItems = 'flex-start';
+
+    const dotGrid = document.createElement('div');
+    dotGrid.className = 'dot-grid';
+    for (let d = 0; d < t.gesamt; d++) {
+      const dot = document.createElement('div');
+      dot.className = 'dot';
+      dotGrid.appendChild(dot);
+    }
+    wrap.appendChild(dotGrid);
+    wrap.innerHTML += `
+      <div>${t.gesamt} : ${t.gruppengroesse} = <input type="number" data-idx="${i}" data-field="hauptantwort"></div>
+      <div><input type="number" data-idx="${i}" data-field="umkehrantwort"> · ${t.gruppengroesse} = ${t.gesamt} <span style="font-size:14px;color:#888">(Umkehraufgabe)</span></div>
+    `;
+    container.appendChild(wrap);
+  });
+}
+
+async function checkModule(mod) {
+  const container = document.getElementById('mod-' + mod.id);
+  let answers = [];
+
+  if (mod.type === 'reihen-drill') {
+    answers = mod.tasks.map((_, i) => container.querySelector(`input[data-idx="${i}"]`).value);
+  } else if (mod.type === 'zahlenmauer') {
+    answers = mod.tasks.map((t, i) => {
+      const inputs = container.querySelectorAll(`input[data-idx="${i}"]`);
+      return Array.from(inputs).map(inp => inp.value);
+    });
+  } else if (mod.type === 'kreise-ein-und-rechne') {
+    answers = mod.tasks.map((_, i) => ({
+      hauptantwort: container.querySelector(`input[data-idx="${i}"][data-field="hauptantwort"]`).value,
+      umkehrantwort: container.querySelector(`input[data-idx="${i}"][data-field="umkehrantwort"]`).value,
+    }));
+  }
+
+  const res = await fetch(`/api/worksheet-modules/${mod.id}/check`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ answers })
+  });
+  const { results } = await res.json();
+
+  results.forEach((r) => {
+    let inputs;
+    if (mod.type === 'kreise-ein-und-rechne') {
+      inputs = container.querySelectorAll(`input[data-idx="${r.index}"]`);
+    } else {
+      inputs = container.querySelectorAll(`input[data-idx="${r.index}"]`);
+    }
+    inputs.forEach(inp => {
+      inp.classList.remove('correct', 'wrong');
+      inp.classList.add(r.correct ? 'correct' : 'wrong');
+    });
+  });
+}
+
+load();
+</script>
+</body>
+</html>
